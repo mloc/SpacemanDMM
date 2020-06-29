@@ -1048,6 +1048,12 @@ pub enum Statement {
         step: Option<Expression>,
         block: Block,
     },
+    Stream {
+        /// Will alwys be an Expression::Base variant.
+        lhs: Expression,
+        direction: StreamDirection,
+        rhs: Expression,
+    },
     Var(VarStatement),
     Vars(Vec<VarStatement>),
     Setting {
@@ -1078,6 +1084,12 @@ pub enum Statement {
     },
     Del(Expression),
     Crash(Expression),
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub enum StreamDirection {
+    Left,
+    Right,
 }
 
 #[derive(Debug, Clone, PartialEq)]

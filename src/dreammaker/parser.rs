@@ -1550,9 +1550,28 @@ impl<'ctx, 'an, 'inp> Parser<'ctx, 'an, 'inp> {
             success(Statement::Goto(label_name))
         // EXPRESSION STATEMENTS
         } else {
-            // statement :: expression ';'
-            let expr = leading!(self.expression());
-            success(Statement::Expr(expr))
+            let expr_base = leading!(self.group(false));
+            if let Some(()) = self.exact_ident("<<")? {
+                // statement :: expression_base '<<' expression ';'
+                let stream_rhs = require!(self.expression());
+                success(Statement::Stream {
+                    lhs: expr_base,
+                    direction: StreamDirection::Left,
+                    rhs: stream_rhs,
+                })
+            } else if let Some(()) = self.exact_ident(">>")? {
+                // statement :: expression_base '>>' expression_base ';'
+                let stream_rhs = require!(self.group(false));
+                success(Statement::Stream {
+                    lhs: expr_base,
+                    direction: StreamDirection::Right,
+                    rhs: stream_rhs,
+                })
+            } else {
+                // statement :: expression ';'
+                let expr = leading!(self.expression_full_from(expr_base, false));
+                success(Statement::Expr(expr))
+            }
         }
     }
 
@@ -1682,7 +1701,12 @@ impl<'ctx, 'an, 'inp> Parser<'ctx, 'an, 'inp> {
     }
 
     fn expression_ex(&mut self, in_ternary: bool) -> Status<Expression> {
-        let mut expr = leading!(self.group(in_ternary));
+        let lhs = leading!(self.group(in_ternary));
+        self.expression_full_from(lhs, in_ternary)
+    }
+
+    fn expression_full_from(&mut self, lhs: Expression, in_ternary: bool) -> Status<Expression> {
+        let mut expr = lhs;
         loop {
             // try to read the next operator
             let next = self.next("operator")?;
