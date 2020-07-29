@@ -1066,7 +1066,7 @@ pub enum Statement {
     },
     TryCatch {
         try_block: Block,
-        catch_params: Vec<TreePath>,
+        catch_param: Option<(VarType, String)>,
         catch_block: Block,
     },
     Continue(Option<String>),

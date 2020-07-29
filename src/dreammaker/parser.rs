@@ -1373,19 +1373,28 @@ impl<'ctx, 'an, 'inp> Parser<'ctx, 'an, 'inp> {
             let try_block = require!(self.block(loop_ctx));
             self.skip_phantom_semicolons()?;
             require!(self.exact_ident("catch"));
-            let catch_params;
+            let catch_param;
             if let Some(()) = self.exact(Token::Punct(Punctuation::LParen))? {
-                catch_params = require!(self.separated(Punctuation::Comma, Punctuation::RParen, None, |this| {
-                    // TODO: improve upon this cheap approximation
-                    success(leading!(this.tree_path(true)).1)
-                }));
+                if let Some(()) = self.exact(Token::Punct(Punctuation::RParen))? {
+                    catch_param = None
+                } else {
+                    require!(self.exact_ident("var"));
+                    let (_, mut tree_path) = require!(self.tree_path(true));
+                    let name = match tree_path.pop() {
+                        Some(name) => name,
+                        None => return Err(self.error("'var' must be followed by a name")),
+                    };
+                    let var_type = tree_path.into_iter().collect::<VarType>();
+                    catch_param = Some((var_type, name));
+                    require!(self.exact(Token::Punct(Punctuation::RParen)));
+                }
             } else {
-                catch_params = Vec::new();
+                catch_param = None;
             }
             let catch_block = require!(self.block(loop_ctx));
             spanned(Statement::TryCatch {
                 try_block,
-                catch_params,
+                catch_param,
                 catch_block,
             })
         // SINGLE-LINE STATEMENTS
